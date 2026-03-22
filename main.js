@@ -77,7 +77,7 @@
   let geoFeatures = [];
 
   /* === D3 Globals === */
-  let projection, pathGenerator, zoom;
+  let projection, pathGenerator, zoom, g;
 
   /* === Utility Functions === */
   function featureId(d) { return String(d.id).padStart(3, '0'); }
@@ -181,7 +181,7 @@
       .attr('width', width)
       .attr('height', height);
 
-    const g = d3.select('#map-group');
+    g = d3.select('#map-group');
 
     projection = d3.geoNaturalEarth1()
       .scale(width / 6.3)
