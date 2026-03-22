@@ -23,7 +23,7 @@ Visual inventory of every major UI element — appearance, positioning, and mobi
   - Quiz target (`.target`): blue fill (`#4a90d9`), dark blue stroke (`#1a5fa0`, 2px)
   - Wrong click (`.wrong-guess`): red fill (`#e05555`), dark red stroke (`#a02020`, 1.5px) — flashes for 600ms
   - Cursor: pointer on all countries
-- **Zoom:** Scroll-wheel and drag, 1×–12× scale range, applied as CSS transform on inner `<g>`
+- **Zoom:** Scroll-wheel and drag, 1×–24× scale range, applied as CSS transform on inner `<g>`. Stroke widths are divided by the current zoom scale (`--zoom-k` CSS custom property) so borders remain a constant pixel width at all zoom levels.
 - **Touch interaction (explore):** Tap a country to highlight it and show its info panel (equivalent to hover). Tap a different country to switch. Tap the same country or empty area to dismiss.
 
 ---

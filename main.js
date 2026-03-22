@@ -200,7 +200,7 @@
       .on('mouseleave', onCountryLeave);
 
     zoom = d3.zoom()
-      .scaleExtent([1, 12])
+      .scaleExtent([1, 24])
       .on('zoom', (event) => {
         g.attr('transform', event.transform);
         document.documentElement.style.setProperty('--zoom-k', event.transform.k);
