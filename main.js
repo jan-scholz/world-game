@@ -203,6 +203,7 @@
       .scaleExtent([1, 12])
       .on('zoom', (event) => {
         g.attr('transform', event.transform);
+        document.documentElement.style.setProperty('--zoom-k', event.transform.k);
       });
 
     svg.call(zoom);
