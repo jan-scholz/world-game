@@ -208,12 +208,20 @@
 
     svg.call(zoom);
 
-    // Click on empty SVG area to dismiss explore panel
+    // Click on empty SVG area to dismiss explore panel or check proximity for small countries
     svg.on('click', (event) => {
       if (event.target.tagName !== 'path' && gameState.mode === 'explore') {
         d3.selectAll('.country').classed('highlighted', false);
         countryPanel.classList.remove('visible');
         lastTappedId = null;
+      }
+
+      // Proximity check for small countries in "find" mode (click on ocean/empty area)
+      if (event.target.tagName !== 'path'
+          && gameState.mode === 'find' && gameState.phase === 'playing'
+          && isNearSmallTarget(event)) {
+        gameState.score++;
+        showFeedback(true);
       }
     });
 
@@ -267,13 +275,26 @@
     if (gameState.mode === 'explore') {
       handleExploreClick(id, this);
     } else if (gameState.mode === 'find' && gameState.phase === 'playing') {
-      handleFindClick(id, this);
+      handleFindClick(id, this, event);
     }
   }
 
   /* === Find the Country === */
-  function handleFindClick(id, pathEl) {
-    if (id === gameState.targetId) {
+  function isNearSmallTarget(event) {
+    const target = countriesData[gameState.targetId];
+    if (!target || (target.area_km2 && target.area_km2 >= 500)) return false;
+    const targetFeature = geoFeatures.find(f => featureId(f) === gameState.targetId);
+    if (!targetFeature) return false;
+    const [px, py] = d3.pointer(event, g.node());
+    const clickGeo = projection.invert([px, py]);
+    if (!clickGeo) return false;
+    const centroid = d3.geoCentroid(targetFeature);
+    const dist = d3.geoDistance(clickGeo, centroid) * 6371; // km
+    return dist < 50;
+  }
+
+  function handleFindClick(id, pathEl, event) {
+    if (id === gameState.targetId || isNearSmallTarget(event)) {
       gameState.score++;
       showFeedback(true);
     } else {
