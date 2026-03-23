@@ -75,6 +75,7 @@
   let countriesData = {};
   let aliasesData = {};
   let geoFeatures = [];
+  let smallTargetFeatures = [];
 
   /* === D3 Globals === */
   let projection, pathGenerator, zoom, g;
@@ -159,15 +160,17 @@
 
   /* === Data Loading === */
   async function loadData() {
-    const [topology, countries, aliases] = await Promise.all([
+    const [topology, countries, aliases, smallTargets] = await Promise.all([
       d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json'),
       d3.json('countries.json'),
       d3.json('aliases.json'),
+      d3.json('small_targets.json').catch(() => ({ type: 'FeatureCollection', features: [] })),
     ]);
 
     countriesData = countries;
     aliasesData = aliases;
     geoFeatures = topojson.feature(topology, topology.objects.countries).features;
+    smallTargetFeatures = smallTargets.features;
 
     initMap();
   }
@@ -199,29 +202,36 @@
       .on('mouseenter', onCountryEnter)
       .on('mouseleave', onCountryLeave);
 
+    // Render enlarged click targets for small countries
+    const smallG = d3.select('#small-targets');
+    smallG.selectAll('path')
+      .data(smallTargetFeatures)
+      .join('path')
+      .attr('d', pathGenerator)
+      .attr('data-id', d => d.properties.id)
+      .on('click', function(event, d) {
+        const id = d.properties.id;
+        if (gameState.mode === 'find' && gameState.phase === 'playing') {
+          handleFindClick(id, this);
+        }
+      });
+
     zoom = d3.zoom()
       .scaleExtent([1, 24])
       .on('zoom', (event) => {
         g.attr('transform', event.transform);
+        smallG.attr('transform', event.transform);
         document.documentElement.style.setProperty('--zoom-k', event.transform.k);
       });
 
     svg.call(zoom);
 
-    // Click on empty SVG area to dismiss explore panel or check proximity for small countries
+    // Click on empty SVG area to dismiss explore panel
     svg.on('click', (event) => {
       if (event.target.tagName !== 'path' && gameState.mode === 'explore') {
         d3.selectAll('.country').classed('highlighted', false);
         countryPanel.classList.remove('visible');
         lastTappedId = null;
-      }
-
-      // Proximity check for small countries in "find" mode (click on ocean/empty area)
-      if (event.target.tagName !== 'path'
-          && gameState.mode === 'find' && gameState.phase === 'playing'
-          && isNearSmallTarget(event)) {
-        gameState.score++;
-        showFeedback(true);
       }
     });
 
@@ -275,26 +285,13 @@
     if (gameState.mode === 'explore') {
       handleExploreClick(id, this);
     } else if (gameState.mode === 'find' && gameState.phase === 'playing') {
-      handleFindClick(id, this, event);
+      handleFindClick(id, this);
     }
   }
 
   /* === Find the Country === */
-  function isNearSmallTarget(event) {
-    const target = countriesData[gameState.targetId];
-    if (!target || (target.area_km2 && target.area_km2 >= 500)) return false;
-    const targetFeature = geoFeatures.find(f => featureId(f) === gameState.targetId);
-    if (!targetFeature) return false;
-    const [px, py] = d3.pointer(event, g.node());
-    const clickGeo = projection.invert([px, py]);
-    if (!clickGeo) return false;
-    const centroid = d3.geoCentroid(targetFeature);
-    const dist = d3.geoDistance(clickGeo, centroid) * 6371; // km
-    return dist < 50;
-  }
-
-  function handleFindClick(id, pathEl, event) {
-    if (id === gameState.targetId || isNearSmallTarget(event)) {
+  function handleFindClick(id, pathEl) {
+    if (id === gameState.targetId) {
       gameState.score++;
       showFeedback(true);
     } else {

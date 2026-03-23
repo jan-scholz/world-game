@@ -39,6 +39,9 @@ html, body {
 .country.highlighted { fill: #f90; stroke: #c00; stroke-width: calc(1.5px / var(--zoom-k)); }
 .country.target { fill: #4a90d9; stroke: #1a5fa0; stroke-width: calc(2px / var(--zoom-k)); }
 .country.wrong-guess { fill: #e05555; stroke: #a02020; stroke-width: calc(1.5px / var(--zoom-k)); }
+#small-targets { pointer-events: none; }
+#small-targets path { fill: rgba(74, 144, 217, 0.2); stroke: rgba(74, 144, 217, 0.4); stroke-width: calc(0.5px / var(--zoom-k)); cursor: pointer; pointer-events: none; }
+[data-mode="find"][data-phase="playing"] #small-targets path { pointer-events: all; }
 
 /* === Overlay Screens === */
 .overlay-screen {
