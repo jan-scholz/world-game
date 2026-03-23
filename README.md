@@ -5,6 +5,16 @@ This is a game that helps people learn country names, locations, flags, and capi
 
 It centres around an interactive map displaying the outlines of every country in the world. The user can zoom in and out and pan around the map. Hovering over a country highlights it and its outline.
 
+## Quickstart
+
+Start a server.
+
+```sh
+python3 -m http.server 8000
+```
+
+Then open [localhost:8000](http://localhost:8000)
+
 ## Stack
 - **D3.js v7** (via CDN) — data-driven SVG rendering and zoom behavior
 - **topojson-client** (via CDN) — decode TopoJSON (smaller format, shared borders)
