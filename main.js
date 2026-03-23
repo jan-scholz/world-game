@@ -280,9 +280,9 @@
   /* === Country Click Handler === */
   function onCountryClick(event, d) {
     const id = featureId(d);
-    if (!countriesData[id]) return;
 
     if (gameState.mode === 'explore') {
+      if (!countriesData[id]) return;
       handleExploreClick(id, this);
     } else if (gameState.mode === 'find' && gameState.phase === 'playing') {
       handleFindClick(id, this);

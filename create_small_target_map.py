@@ -86,26 +86,61 @@ def topojson_to_geojson(topology):
     return features
 
 
-def compute_centroid(feature):
-    """Compute a simple centroid (average of all coordinates)."""
+def polygon_centroid(rings):
+    """Compute centroid of a single polygon from its outer ring."""
+    outer = rings[0]
+    if not outer:
+        return None
+    lon = sum(p[0] for p in outer) / len(outer)
+    lat = sum(p[1] for p in outer) / len(outer)
+    return [lon, lat]
+
+
+# Countries that get one disc per polygon (island group) instead of one overall centroid
+MULTI_DISC_IDS = {"585", "584"}  # Palau, Marshall Islands
+
+# Manual centroid overrides: country ID -> list of [lon, lat] centroids
+CENTROID_OVERRIDES = {
+    "462": [[73.41, 3.26], [73.50, 4.20]],                                         # Maldives — southern and northern atolls
+    "585": [[134.59, 7.52], [131.16, 3.04]],                                       # Palau — Babeldaob, Southwest Islands
+    "584": [[169.65, 5.89], [168.76, 7.31], [171.65, 7.01], [171.20, 7.11], [166.88, 11.16]],  # Marshall Islands — 5 atoll groups
+}
+
+
+def compute_centroids(feature):
+    """Return a list of centroids for a feature.
+
+    Manual overrides take precedence. Countries in MULTI_DISC_IDS get
+    one disc per polygon. All others get a single centroid.
+    """
+    fid = feature["id"]
+    if fid in CENTROID_OVERRIDES:
+        return CENTROID_OVERRIDES[fid]
+
     coords = feature["geometry"]["coordinates"]
     geom_type = feature["geometry"]["type"]
 
+    # Collect all outer-ring points for a single centroid
     all_points = []
     if geom_type == "Polygon":
-        for ring in coords:
-            all_points.extend(ring)
+        all_points.extend(coords[0])
     elif geom_type == "MultiPolygon":
+        if fid in MULTI_DISC_IDS:
+            centroids = []
+            for polygon in coords:
+                c = polygon_centroid(polygon)
+                if c:
+                    centroids.append(c)
+            return centroids
         for polygon in coords:
-            for ring in polygon:
-                all_points.extend(ring)
+            all_points.extend(polygon[0])
 
     if not all_points:
-        return None
+        return []
 
     lon = sum(p[0] for p in all_points) / len(all_points)
     lat = sum(p[1] for p in all_points) / len(all_points)
-    return [lon, lat]
+    return [[lon, lat]]
 
 
 def create_circle(center, radius_km, num_points=64):
@@ -174,30 +209,33 @@ def main():
     topology = load_topojson()
     geo_features = topojson_to_geojson(topology)
 
-    # Build circle features
+    # Build circle features (one per polygon/island group)
     circles = []
     for feature in geo_features:
         fid = feature["id"]
         if fid not in small_ids:
             continue
 
-        centroid = compute_centroid(feature)
-        if not centroid:
+        centroids = compute_centroids(feature)
+        if not centroids:
             print(f"  WARNING: could not compute centroid for {fid}")
             continue
 
         name = countries[fid]["name"]
-        circle_geom = create_circle(centroid, args.radius)
-        circles.append({
-            "type": "Feature",
-            "geometry": circle_geom,
-            "properties": {
-                "id": fid,
-                "name": name,
-                "radius_km": args.radius,
-            },
-        })
-        print(f"  {fid}: {name} — centroid [{centroid[0]:.2f}, {centroid[1]:.2f}]")
+        for i, centroid in enumerate(centroids):
+            circle_geom = create_circle(centroid, args.radius)
+            circles.append({
+                "type": "Feature",
+                "geometry": circle_geom,
+                "properties": {
+                    "id": fid,
+                    "name": name,
+                    "radius_km": args.radius,
+                },
+            })
+        label = ", ".join(f"[{c[0]:.2f}, {c[1]:.2f}]" for c in centroids)
+        suffix = " (override)" if fid in CENTROID_OVERRIDES else ""
+        print(f"  {fid}: {name} — {len(centroids)} disc(s) at {label}{suffix}")
 
     # Countries in countries.json but missing from TopoJSON
     found_ids = {c["properties"]["id"] for c in circles}
